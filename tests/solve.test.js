@@ -35,9 +35,9 @@ describe("POST /api/solve", () => {
   });
 });
 
-describe("GET /", () => {
+describe("GET /health", () => {
   it("returns health check response", async () => {
-    const res = await request(app).get("/");
+    const res = await request(app).get("/health");
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveProperty("status", "ok");

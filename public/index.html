@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Homework Solver</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ---- Reset ------------------------------------------------------- */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ---- Tokens ------------------------------------------------------ */
+    :root {
+      --chalk-green:  #1c4a30;
+      --accent:       #4ade80;
+      --accent-glow:  rgba(74, 222, 128, 0.35);
+      --glass-bg:     rgba(10, 30, 18, 0.72);
+      --glass-border: rgba(255, 255, 255, 0.14);
+      --glass-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+      --text-primary: #f0fdf4;
+      --text-muted:   #6ee7b7;
+      --error:        #f87171;
+      --answer-bg:    rgba(74, 222, 128, 0.10);
+      --working-bg:   rgba(255, 255, 255, 0.05);
+      --radius:       18px;
+      --radius-sm:    10px;
+      --ease:         0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ---- Base -------------------------------------------------------- */
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--chalk-green);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+    }
+
+    /* ---- Canvas background ------------------------------------------- */
+    #bg {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ---- Page wrapper ------------------------------------------------- */
+    .page {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    /* ---- Main card ---------------------------------------------------- */
+    .card {
+      width: 100%;
+      max-width: 680px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(28px) saturate(160%);
+      -webkit-backdrop-filter: blur(28px) saturate(160%);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      box-shadow: var(--glass-shadow);
+      padding: 2.5rem 2.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      animation: cardIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(24px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0)    scale(1); }
+    }
+
+    /* ---- Header ------------------------------------------------------- */
+    .header {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .logo {
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, var(--accent), #16a34a);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px var(--accent-glow);
+      margin-bottom: 0.25rem;
+    }
+
+    h1 {
+      font-size: clamp(1.4rem, 4vw, 1.9rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #ffffff 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    /* ---- Form --------------------------------------------------------- */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .input-wrapper { position: relative; }
+
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      max-height: 260px;
+      padding: 1rem 1rem 2.4rem;
+      background: rgba(255,255,255,0.07);
+      border: 1.5px solid rgba(255,255,255,0.12);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.97rem;
+      line-height: 1.6;
+      resize: vertical;
+      transition: border-color var(--ease), box-shadow var(--ease);
+      outline: none;
+    }
+
+    textarea::placeholder { color: rgba(255,255,255,0.3); }
+
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(74,222,128,0.18);
+      background: rgba(255,255,255,0.09);
+    }
+
+    .char-count {
+      position: absolute;
+      bottom: 0.6rem;
+      right: 0.8rem;
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.3);
+      pointer-events: none;
+      transition: color var(--ease);
+    }
+
+    .char-count.near { color: #fbbf24; }
+    .char-count.over { color: var(--error); }
+
+    /* ---- Button ------------------------------------------------------- */
+    .btn {
+      position: relative;
+      width: 100%;
+      padding: 0.9rem 1.5rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #052e16;
+      background: linear-gradient(135deg, var(--accent) 0%, #16a34a 100%);
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform var(--ease), box-shadow var(--ease), opacity var(--ease);
+      box-shadow: 0 4px 18px rgba(74,222,128,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.18), transparent);
+      opacity: 0;
+      transition: opacity var(--ease);
+    }
+
+    .btn:hover:not(:disabled)            { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(74,222,128,0.45); }
+    .btn:hover:not(:disabled)::before    { opacity: 1; }
+    .btn:active:not(:disabled)           { transform: translateY(0);   box-shadow: 0 2px 10px rgba(74,222,128,0.25); }
+    .btn:disabled                        { opacity: 0.75; cursor: not-allowed; }
+
+    /* ---- Spinner ------------------------------------------------------ */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2.5px solid rgba(5,46,22,0.3);
+      border-top-color: #052e16;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .btn.loading .spinner  { display: block; }
+    .btn.loading .btn-text { opacity: 0.7; }
+
+    /* ---- Alert -------------------------------------------------------- */
+    .alert {
+      display: none;
+      background: rgba(248,113,113,0.12);
+      border: 1px solid rgba(248,113,113,0.35);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      color: #fca5a5;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .alert.show { display: flex; gap: 0.5rem; align-items: flex-start; }
+
+    /* ---- Result cards ------------------------------------------------- */
+    .results {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      animation: fadeIn 0.4s ease both;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-block {
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.09);
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .result-header-left { display: flex; align-items: center; gap: 0.5rem; }
+
+    .result-block.answer .result-header {
+      background: rgba(74,222,128,0.18);
+      color: var(--accent);
+      border-bottom: 1px solid rgba(74,222,128,0.2);
+    }
+
+    .result-block.working .result-header {
+      background: rgba(255,255,255,0.07);
+      color: var(--text-muted);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .result-body { padding: 1rem; }
+
+    .result-block.answer .result-body {
+      background: var(--answer-bg);
+      font-size: 1rem;
+      line-height: 1.75;
+      color: var(--text-primary);
+    }
+
+    .result-block.working .result-body {
+      background: var(--working-bg);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      line-height: 1.75;
+      color: #d1fae5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* Copy button */
+    .copy-btn {
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: 6px;
+      color: inherit;
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      transition: background var(--ease);
+      font-family: 'Inter', sans-serif;
+    }
+
+    .copy-btn:hover { background: rgba(255,255,255,0.2); }
+
+    /* ---- Footer ------------------------------------------------------- */
+    .footer {
+      margin-top: 1.25rem;
+      text-align: center;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.25);
+    }
+
+    /* ---- Responsive --------------------------------------------------- */
+    @media (max-width: 520px) {
+      .card { padding: 1.75rem 1.25rem 1.5rem; gap: 1.25rem; }
+      h1 { font-size: 1.5rem; }
+    }
+
+    @media (max-width: 360px) {
+      .card { padding: 1.4rem 1rem 1.2rem; }
+    }
+
+    /* ---- Skeleton loader ---------------------------------------------- */
+    .skeleton {
+      border-radius: 6px;
+      background: linear-gradient(90deg,
+        rgba(255,255,255,0.06) 25%,
+        rgba(255,255,255,0.12) 37%,
+        rgba(255,255,255,0.06) 63%);
+      background-size: 400% 100%;
+      animation: shimmer 1.4s ease infinite;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 100% 50%; }
+      100% { background-position: 0%   50%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Interactive chalkboard canvas -->
+<canvas id="bg"></canvas>
+
+<!-- App -->
+<div class="page">
+  <div class="card" role="main">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="logo" aria-hidden="true">
+        <!-- Graduation cap SVG -->
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3z" fill="#052e16"/>
+          <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" fill="#052e16"/>
+        </svg>
+      </div>
+      <h1>AI Homework Solver</h1>
+      <p class="subtitle">Ask any question &mdash; get a clear answer with step-by-step working</p>
+    </header>
+
+    <!-- Question form -->
+    <div class="form-group">
+      <label for="question">Your Question</label>
+      <div class="input-wrapper">
+        <textarea
+          id="question"
+          placeholder="e.g. What is the Pythagorean theorem? Solve 3x + 7 = 22."
+          maxlength="2000"
+          aria-describedby="charCount"
+          autofocus
+        ></textarea>
+        <span class="char-count" id="charCount" aria-live="polite">0 / 2000</span>
+      </div>
+    </div>
+
+    <!-- Alert -->
+    <div class="alert" id="alert" role="alert" aria-live="assertive">
+      <span>&#9888;</span>
+      <span id="alertMsg"></span>
+    </div>
+
+    <!-- Submit -->
+    <button class="btn" id="submitBtn" type="button">
+      <div class="spinner" aria-hidden="true"></div>
+      <span class="btn-text">
+        <!-- Stars / magic icon -->
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="display:inline;vertical-align:-2px;margin-right:5px">
+          <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z" fill="#052e16"/>
+          <path d="M5 15l.75 2.25L8 18l-2.25.75L5 21l-.75-2.25L2 18l2.25-.75L5 15z" fill="#052e16"/>
+          <path d="M19 3l.5 1.5L21 5l-1.5.5L19 7l-.5-1.5L17 5l1.5-.5L19 3z" fill="#052e16"/>
+        </svg>Solve Question
+      </span>
+    </button>
+
+    <!-- Results (hidden until response) -->
+    <div class="results" id="results" style="display:none;" aria-live="polite">
+
+      <div class="result-block answer">
+        <div class="result-header">
+          <span class="result-header-left">
+            <!-- Light bulb icon -->
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 2a7 7 0 0 1 4 12.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26A7 7 0 0 1 12 2zm2 17H10v1a2 2 0 0 0 4 0v-1z"/>
+            </svg>
+            Answer
+          </span>
+          <button class="copy-btn" id="copyAnswer" title="Copy answer">Copy</button>
+        </div>
+        <div class="result-body" id="answerContent"></div>
+      </div>
+
+      <div class="result-block working" id="workingBlock">
+        <div class="result-header">
+          <span class="result-header-left">
+            <!-- Steps / list icon -->
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
+            </svg>
+            Step-by-Step Working
+          </span>
+          <button class="copy-btn" id="copyWorking" title="Copy working">Copy</button>
+        </div>
+        <div class="result-body" id="workingContent"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <footer class="footer">
+    Powered by GPT &bull; AI Homework API
+  </footer>
+</div>
+
+<!-- Scripts -->
+<script src="/app.js"></script>
+</body>
+</html>

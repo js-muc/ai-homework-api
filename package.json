@@ -10,13 +10,19 @@
     "lint": "eslint src/**/*.js",
     "format": "prettier --write src/**/*.js"
   },
-  "keywords": ["ai", "homework", "api", "express"],
+  "keywords": [
+    "ai",
+    "homework",
+    "api",
+    "express"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.4.7",
     "express": "^5.2.1",
-    "helmet": "^8.0.0"
+    "helmet": "^8.0.0",
+    "openai": "^6.27.0"
   },
   "devDependencies": {
     "eslint": "^10.0.3",
@@ -26,4 +32,3 @@
     "supertest": "^7.1.0"
   }
 }
-

@@ -1,13 +1,10 @@
-const express = require("express");
-const router = express.Router();
-const { solve } = require("../controllers/solveController");
+// src/routes/solveRoute.js
+const express = require('express');
+const { handleSolve } = require('../controllers/solveController');
 
-/**
- * @route  POST /api/solve
- * @desc   Submit a homework question and receive an AI-generated answer
- * @access Public
- * @body   { question: string }
- */
-router.post("/solve", solve);
+const router = express.Router();
+
+// POST /api/solve
+router.post('/solve', handleSolve);
 
 module.exports = router;

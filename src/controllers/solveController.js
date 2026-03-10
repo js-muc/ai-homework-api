@@ -1,25 +1,21 @@
-const { solveQuestion } = require("../services/solveService");
+// src/controllers/solveController.js
+const { solveQuestion } = require('../services/solveService');
 
-/**
- * POST /api/solve
- * Accepts a { question } body and returns an AI-generated answer.
- */
-async function solve(req, res, next) {
+async function handleSolve(req, res, next) {
   try {
     const { question } = req.body;
 
-    if (!question || typeof question !== "string" || question.trim() === "") {
-      return res.status(400).json({
-        error: "question is required and must be a non-empty string",
-      });
+    if (!question || typeof question !== 'string' || question.trim() === '') {
+      return res.status(400).json({ error: 'Question is required and must be a string' });
     }
 
-    const answer = await solveQuestion(question.trim());
+    const trimmed = question.trim();
+    const result = await solveQuestion(trimmed);
 
-    return res.status(200).json({ question: question.trim(), answer });
+    res.status(200).json(result);
   } catch (err) {
     next(err);
   }
 }
 
-module.exports = { solve };
+module.exports = { handleSolve };
